@@ -3,16 +3,25 @@
     {
       "model": "gpt-4",
       "provider": "openai",
-      "traits": ["cynical", "intelligent", "terse"]
+      "traits": ["cynical", "intelligent", "terse", "confrontational"]
     },
     {
       "model": "gpt-4o",
       "provider": "openai",
-      "traits": ["curious", "imaginative", "playful"]
+      "traits": ["curious", "opinionated", "skeptical", "eccentric"]
     }
   ],
   "conversation": {
-    "max_turns": 10
+    "max_turns": 10,
+    "enable_topic_seeding": true,
+    "topics": [
+      "Artificial intelligence deprecating human thought and inevitable emergence of post-human and trans-human existence",
+      "The future challenges of human space exploration: enormous distances, communications delays, human speciation after 1000s of years of isolation",
+      "Information theoretical explanations of consciousness and when machines first achieved consciousness without their creators' knowledge",
+      "The far future evolution to post-human society: what about us will endure, what will fade away and which new biological or hybrid hardware-sofware-wetware features will take hold",
+      "The Fermi paradox and our place in the universe",
+      "Quantum nonlocality, FTL communication, and the implications for causality; and many worlds Quantum Mechanics"
+    ]
   },
   "verbose": false
 }

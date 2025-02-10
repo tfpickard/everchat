@@ -30,31 +30,24 @@ def choose_starting_agent() -> Agent:
     return random.choice(agents)
 
 
-def get_random_topic() -> str:
-    """Selects a random topic from the config file."""
-    topics = config.get("topics", [])
-    return random.choice(topics) if topics else "Let's start with something unexpected."
-
-
 def chat_loop():
     """Handles the conversation flow between AI agents."""
     log_init()
     chat_history = []
 
-    # Determine which AI starts and what topic is used
-    if config.get("enable_topic_seeding", False):
+    # Determine which AI starts and pass all topics to generate a new topic
+    if config.get("conversation", {}).get("enable_topic_seeding", False):
         starting_agent = choose_starting_agent()
-        topic = get_random_topic()
-        intro_message = starting_agent.generate_intro(topic)
-        chat_history.append({"role": "assistant", "content": intro_message})
-        log_conversation(starting_agent.name, intro_message, elapsed_time=0)
-        console.print(f"[bold cyan]Starting Topic:[/bold cyan] {topic}")
+        topic = starting_agent.generate_intro(config["conversation"].get("topics", []))
+        chat_history.append({"role": "assistant", "content": topic})
+        log_conversation(starting_agent.name, topic, elapsed_time=0)
+        console.print(f"[bold cyan]Generated Topic:[/bold cyan] {topic}")
         console.print(
-            f"[bold yellow]{starting_agent.name}[/bold yellow] opens: {intro_message}"
+            f"[bold yellow]{starting_agent.name}[/bold yellow] opens: {topic}"
         )
 
     # Continue conversation
-    for _ in range(config["conversation"]["max_turns"]):
+    for _ in range(config["conversation"].get("max_turns", 10)):
         current_agent = agents[_ % len(agents)]
         response = current_agent.respond(chat_history)
         chat_history.append({"role": "assistant", "content": response})
