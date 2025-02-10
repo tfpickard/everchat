@@ -15,3 +15,15 @@ pyenv activate everchat
 python -m venv venv
 source venv/bin/activate
 ```
+
+2️⃣ **Install dependencies**
+
+```bash
+pip install -r requirements.txt
+```
+
+3️⃣ **Run the AI conversation system**
+
+```bash
+python main.py
+```

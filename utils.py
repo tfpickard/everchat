@@ -18,14 +18,14 @@ with open("config.yaml", "r") as config_file:
 log_dir = "logs"
 os.makedirs(log_dir, exist_ok=True)
 
-# Generate an ISO 8601 timestamped log filename
-log_filename = os.path.join(log_dir, f"conversation_{datetime.now().isoformat()}.txt")
+# Generate an ISO 8601 timestamped log filename (Windows-friendly)
+log_filename = os.path.join(log_dir, f"conversation_{datetime.now().isoformat().replace(':', '_')}.txt")
 
 # Configure logging
 logging.basicConfig(
     filename=log_filename,
     level=logging.INFO,
-    format="%(asctime)s\n[%(levelname)s] %(message)s\n" + "-" * 100,
+    format="%(asctime)s [%(levelname)s] %(message)s\n" + "-" * 100,
     datefmt="%Y-%m-%dT%H:%M:%S%z",
 )
 

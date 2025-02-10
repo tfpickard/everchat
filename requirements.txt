@@ -4,4 +4,4 @@ matplotlib
 flask
 flask-socketio
 pyyaml
-sqlite3
+requests

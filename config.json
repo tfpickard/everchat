@@ -1,0 +1,18 @@
+{
+  "ai_models": [
+    {
+      "model": "gpt-4",
+      "provider": "openai",
+      "traits": ["cynical", "intelligent", "terse"]
+    },
+    {
+      "model": "gpt-4o",
+      "provider": "openai",
+      "traits": ["curious", "imaginative", "playful"]
+    }
+  ],
+  "conversation": {
+    "max_turns": 10
+  },
+  "verbose": false
+}
