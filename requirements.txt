@@ -1,0 +1,7 @@
+ollama
+rich
+matplotlib
+flask
+flask-socketio
+pyyaml
+sqlite3
