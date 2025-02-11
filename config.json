@@ -1,7 +1,7 @@
 {
   "ai_models": [
     {
-      "model": "gpt-4",
+      "model": "gpt-4-turbo",
       "provider": "openai",
       "traits": ["cynical", "intelligent", "terse", "confrontational"]
     },
@@ -23,5 +23,5 @@
       "Quantum nonlocality, FTL communication, and the implications for causality; and many worlds Quantum Mechanics"
     ]
   },
-  "verbose": false
+  "verbose": true
 }

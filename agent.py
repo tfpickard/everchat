@@ -3,14 +3,18 @@
 import json
 import logging
 import os
+import random
 import re  # Extract only the JSON portion from the LLM response, in case additional text is included
+import time
 import traceback
+from datetime import datetime
 from typing import Dict, List
 
 import openai
 from rich import print
 from rich.console import Console
 from rich.logging import RichHandler
+from textblob import TextBlob
 
 console = Console()
 
@@ -31,19 +35,19 @@ logger = logging.getLogger("agent")
 
 class Agent:
     def __init__(self, model: str, provider: str, traits: List[str]):
-        self.model = model
-        self.provider = provider
-        self.traits = traits
-        self.name = "Unknown"
-        self.personality = ""
-        self.backstory = ""
-        self.country = ""
-        self.city = ""
-        self.birth_date = ""
-        self.age = ""
-        self.gender = ""
-        self.occupation = ""
-        self.hobbies = ""
+        self.model: str = model
+        self.provider: str = provider
+        self.traits: list[str] = traits
+        self.name: str = "unknown"
+        self.personality: str = ""
+        self.backstory: str = ""
+        self.country: str = ""
+        self.city: str = ""
+        self.birth_date: str = ""
+        self.age: str = ""
+        self.gender: str = ""
+        self.occupation: str = ""
+        self.hobbies: str = ""
         self.openai_client = None
 
         if self.provider == "openai":
@@ -63,8 +67,52 @@ class Agent:
         self.topics = config.get("conversation", {}).get("topics", [])
         self.generate_backstory()
 
+    def generate_response(self) -> str:
+        """Generates a response while strictly enforcing sentence length distribution."""
+        sentence_distribution = {
+            1: 0.2,
+            2: 0.5,
+            3: 0.15,
+            4: 0.15,
+        }
+        sentence_count = random.choices(
+            list(sentence_distribution.keys()), list(sentence_distribution.values())
+        )[0]
+        sentences = ["This is a concise response." for _ in range(sentence_count)]
+        return " ".join(sentences)
+
+    #
+    # def respond(self, chat_history: List[Dict[str, str]]) -> Dict[str, str]:
+    #     start_time = time.time()
+    #
+    #     # Generate response with controlled sentence distribution
+    #     response = self.generate_response()  # <- Called here
+    #     sentence_count = len(response.split(". "))
+    #     sentiment = self.analyze_sentiment(response)
+    #     emotions = self.analyze_emotion(response)
+    #
+    #     elapsed_time = time.time() - start_time
+    #
+    #     log_entry = {
+    #         "role": "assistant",
+    #         "name": self.name,
+    #         "content": response,
+    #         "timestamp": datetime.utcnow().isoformat(),
+    #         "word_count": len(response.split()),
+    #         "sentence_count": sentence_count,
+    #         "sentiment": sentiment,
+    #         "emotion": emotions,
+    #         "elapsed_time": elapsed_time,
+    #     }
+    #
+    #     write_log(setup_logging(), log_entry)
+    #
+    #     return log_entry
+    #
     def respond(self, chat_history: List[Dict[str, str]]) -> str:
-        """Generates a response based on conversation history and agent identity."""
+        start_time = time.time()
+
+        # Generate response with controlled sentence distribution
         context = (
             f"Name: {self.name} "
             f"Age: {self.age} "
@@ -78,7 +126,58 @@ class Agent:
         last_message = (
             chat_history[-1]["content"] if chat_history else "Hello, who are you?"
         )
-        return self.generate_llm_response(last_message, context)
+        try:
+            sentence_distribution = {
+                1: 0.2,
+                2: 0.5,
+                3: 0.15,
+                4: 0.15,
+            }
+            sentence_count = random.choices(
+                list(sentence_distribution.keys()), list(sentence_distribution.values())
+            )[0]
+            prompt = f"Generate a response in {sentence_count} sentences. Keep it concise and on-topic."
+            response = self.generate_llm_response(last_message + " " + prompt, context)
+        except Exception as e:
+            logger.warning(f"LLM response failed, using fallback: {e}")
+            response = self.generate_response()
+        sentence_count = len(response.split(". "))
+        sentiment = self.analyze_sentiment(response)
+        emotions = self.analyze_emotion(response)
+
+        elapsed_time = time.time() - start_time
+
+        log_entry = {
+            "role": "assistant",
+            "name": self.name,
+            "content": response,
+            "timestamp": datetime.utcnow().isoformat(),
+            "word_count": len(response.split()),
+            "sentence_count": sentence_count,
+            "sentiment": sentiment,
+            "emotion": emotions,
+            "elapsed_time": elapsed_time,
+        }
+
+        write_log(log_entry)
+        return response
+
+    # def respond(self, chat_history: List[Dict[str, str]]) -> str:
+    #     """Generates a response based on conversation history and agent identity."""
+    #     context = (
+    #         f"Name: {self.name} "
+    #         f"Age: {self.age} "
+    #         f"Gender: {self.gender} "
+    #         f"Occupation: {self.occupation} "
+    #         f"Location: {self.city}, {self.country} "
+    #         f"Backstory: {self.backstory} "
+    #         "Conversation History: "
+    #         + " ".join([msg["content"] for msg in chat_history[-5:]])
+    #     )
+    #     last_message = (
+    #         chat_history[-1]["content"] if chat_history else "Hello, who are you?"
+    #     )
+    #     return self.generate_llm_response(last_message, context)
 
     def generate_intro(self, topics: List[str]) -> str:
         """Generates an opening statement about a unique topic based on provided topics."""
@@ -160,15 +259,65 @@ class Agent:
     def generate_backstory(self) -> None:
         """Requests the LLM to generate a unique backstory for the agent."""
         prompt = (
-            f"Generate a unique and detailed backstory for a person named {self.name}, "
+            f"Generate a unique backstory for a person named {self.name}, "
             f"a {self.age}-year-old {self.occupation} from {self.city}, {self.country}. "
-            "The backstory should include their upbringing, major life events, and motivations."
+            "The backstory should focus on transformational life events which would"
+            "influence this person's worldview. Keep it concise and don't elaborate much."
+            "This story is just a beginning and more details will be added later."
         )
         logger.info("Calling LLM for backstory generation...")
         self.backstory = self.generate_llm_response(
             prompt, "(Backstory Generation Context)"
         )
-        logger.info(f"Generated Backstory for {self.name}")
+        logger.info(f"Generated Backstory for {self.name}: {self.backstory}")
+
+    def analyze_sentiment(self, text: str) -> dict[str, float]:
+        analysis = TextBlob(text)
+        return {
+            "polarity": analysis.sentiment.polarity,
+            "subjectivity": analysis.sentiment.subjectivity,
+            "detailed": {
+                "very_positive": 1.0 if analysis.sentiment.polarity > 0.75 else 0.0,
+                "positive": 1.0 if 0.25 < analysis.sentiment.polarity <= 0.75 else 0.0,
+                "neutral": 1.0 if -0.25 <= analysis.sentiment.polarity <= 0.25 else 0.0,
+                "negative": (
+                    1.0 if -0.75 <= analysis.sentiment.polarity < -0.25 else 0.0
+                ),
+                "very_negative": 1.0 if analysis.sentiment.polarity < -0.75 else 0.0,
+            },
+        }
+
+    def analyze_emotion(self, text: str) -> dict[str, float]:
+        emotions = {
+            "happy": 0.0,
+            "sad": 0.0,
+            "angry": 0.0,
+            "neutral": 1.0,
+            "fearful": 0.0,
+            "surprised": 0.0,
+        }
+        polarity = TextBlob(text).sentiment.polarity
+
+        if polarity > 0.5:
+            emotions["happy"] = polarity
+            emotions["neutral"] = 1.0 - polarity
+        elif polarity < -0.5:
+            emotions["sad"] = abs(polarity)
+            emotions["neutral"] = 1.0 - abs(polarity)
+        elif -0.5 <= polarity <= -0.1:
+            emotions["angry"] = abs(polarity)
+            emotions["neutral"] = 1.0 - abs(polarity)
+
+        # Adding more nuance
+        if abs(polarity) > 0.75:
+            emotions["fearful"] = abs(polarity) / 2
+        if 0.1 < abs(polarity) < 0.3:
+            emotions["surprised"] = abs(polarity)
+
+        return emotions
+
+    def count_sentences(self, text: str) -> int:
+        return len(re.split(r"[.!?]+", text)) - 1
 
     def generate_llm_response(self, user_input: str, context: str) -> str:
         """Generates a response using the configured AI provider."""
@@ -198,3 +347,31 @@ class Agent:
         except Exception as e:
             logger.error(f"OpenAI API call failed: {e}\n{traceback.format_exc()}")
             return ""
+
+
+log_filename: str = ""
+
+
+def setup_logging():
+    global log_filename
+    log_dir = os.path.abspath("logs")
+    os.makedirs("logs", exist_ok=True)
+    log_filename = f"{log_dir}/conversation_{datetime.now().isoformat()}.json"
+    symlink_path = f"{log_dir}/current.json"
+
+    if os.path.islink(symlink_path):
+        print(f"path exists: {symlink_path}")
+        # os.unlink(symlink_path)
+        os.remove(symlink_path)
+    os.symlink(log_filename, symlink_path)
+
+    return log_filename
+
+
+def write_log(log_entry: dict[str, str]):
+    global log_filename
+    if log_filename == "":
+        log_filename = setup_logging()
+    with open(log_filename, "a") as log_file:
+        json.dump(log_entry, log_file)
+        _ = log_file.write("\n")

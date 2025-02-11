@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import datetime
 import json
 import random
 import time
@@ -8,8 +9,7 @@ from typing import List
 
 from rich.console import Console
 
-from agent import Agent
-from utils import log_conversation, log_init
+from agent import Agent, setup_logging, write_log
 
 console = Console()
 
@@ -31,8 +31,8 @@ def choose_starting_agent() -> Agent:
 
 
 def chat_loop():
+    _ = setup_logging()
     """Handles the conversation flow between AI agents."""
-    log_init()
     chat_history = []
 
     # Determine which AI starts and pass all topics to generate a new topic
@@ -40,7 +40,6 @@ def chat_loop():
         starting_agent = choose_starting_agent()
         topic = starting_agent.generate_intro(config["conversation"].get("topics", []))
         chat_history.append({"role": "assistant", "content": topic})
-        log_conversation(starting_agent.name, topic, elapsed_time=0)
         console.print(f"[bold cyan]Generated Topic:[/bold cyan] {topic}")
         console.print(
             f"[bold yellow]{starting_agent.name}[/bold yellow] opens: {topic}"
@@ -49,11 +48,20 @@ def chat_loop():
     # Continue conversation
     for _ in range(config["conversation"].get("max_turns", 10)):
         current_agent = agents[_ % len(agents)]
-        response = current_agent.respond(chat_history)
-        chat_history.append({"role": "assistant", "content": response})
-        log_conversation(current_agent.name, response, elapsed_time=0)
-        console.print(f"[bold green]{current_agent.name}[/bold green]: {response}")
+        response_data = current_agent.respond(chat_history)
+        if isinstance(response_data, str):
+            response_data = {"content": response_data}
+        write_log(response_data)
+        chat_history.append(
+            {"role": "assistant", "content": response_data.get("content", "")}
+        )
+        console.print(
+            f"[bold green]{current_agent.name}[/bold green]: {response_data.get('content', '')}"
+        )
 
+
+if __name__ == "__main__":
+    chat_loop()
 
 if __name__ == "__main__":
     chat_loop()
